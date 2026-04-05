@@ -5,11 +5,12 @@ edition = "2024"
 
 [workspace]
 members = [
-	"crates/api",
+	"crates/api", "crates/domain",
 ]
 
 [dependencies]
 anyhow = "1.0.102"
 axum = "0.8.8"
+chrono = "0.4.44"
 serde = "1.0.228"
 tokio = { version = "1", features = ["full"] }
