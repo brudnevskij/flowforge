@@ -5,7 +5,7 @@ edition = "2024"
 
 [workspace]
 members = [
-	"crates/api", "crates/domain",
+	"crates/api", "crates/app", "crates/domain",
 ]
 
 [dependencies]
@@ -14,3 +14,7 @@ axum = "0.8.8"
 chrono = "0.4.44"
 serde = "1.0.228"
 tokio = { version = "1", features = ["full"] }
+
+api = { path = "crates/api" }
+app = { path = "crates/app" }
+domain = { path = "crates/domain" }
