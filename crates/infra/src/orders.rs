@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use domain::{Order, OrderStatus, OrderStatusParseError};
-use sqlx::PgPool;
+use sqlx::{PgPool, Postgres, Transaction};
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -98,6 +98,55 @@ impl PostgresOrderRepository {
         .bind(order.completed_at)
         .bind(order.cancelled_at)
         .fetch_one(&self.pool)
+        .await?;
+
+        Ok(row.try_into()?)
+    }
+
+    pub async fn insert_tx(
+        &self,
+        tx: &mut Transaction<'_, Postgres>,
+        order: &Order,
+    ) -> anyhow::Result<Order> {
+        let row: OrderRow = sqlx::query_as(
+            r#"
+        INSERT INTO orders (
+            id,
+            customer_reference,
+            partner_name,
+            external_reference,
+            status,
+            amount_cents,
+            currency,
+            failure_reason,
+            created_at,
+            updated_at,
+            submitted_at,
+            completed_at,
+            cancelled_at
+        )
+        VALUES (
+            $1, $2, $3, $4, $5,
+            $6, $7, $8, $9, $10,
+            $11, $12, $13
+        )
+        RETURNING *
+        "#,
+        )
+        .bind(order.id)
+        .bind(&order.customer_reference)
+        .bind(&order.partner_name)
+        .bind(&order.external_reference)
+        .bind(order.status.as_str())
+        .bind(order.amount_cents)
+        .bind(&order.currency)
+        .bind(&order.failure_reason)
+        .bind(order.created_at)
+        .bind(order.updated_at)
+        .bind(order.submitted_at)
+        .bind(order.completed_at)
+        .bind(order.cancelled_at)
+        .fetch_one(&mut **tx)
         .await?;
 
         Ok(row.try_into()?)
