@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use thiserror::Error;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -39,6 +40,31 @@ impl OrderStatus {
             OrderStatus::Completed => "completed",
             OrderStatus::Failed => "failed",
             OrderStatus::Cancelled => "cancelled",
+        }
+    }
+}
+
+#[derive(Debug, Error)]
+#[error("unknown order status: {value}")]
+pub struct OrderStatusParseError {
+    value: String,
+}
+
+impl TryFrom<&str> for OrderStatus {
+    type Error = OrderStatusParseError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "draft" => Ok(OrderStatus::Draft),
+            "submitted" => Ok(OrderStatus::Submitted),
+            "processing" => Ok(OrderStatus::Processing),
+            "partner_pending" => Ok(OrderStatus::PartnerPending),
+            "completed" => Ok(OrderStatus::Completed),
+            "failed" => Ok(OrderStatus::Failed),
+            "cancelled" => Ok(OrderStatus::Cancelled),
+            value => Err(OrderStatusParseError {
+                value: value.to_string(),
+            }),
         }
     }
 }
