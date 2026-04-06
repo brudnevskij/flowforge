@@ -6,6 +6,9 @@ edition = "2024"
 [dependencies]
 app = { path = "../app" }
 domain = { path = "../domain" }
+infra = {path = "../infra"}
+
+
 axum = "0.8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
