@@ -5,13 +5,14 @@ edition = "2024"
 
 [workspace]
 members = [
-	"crates/api", "crates/app", "crates/domain",
+	"crates/api", "crates/app", "crates/domain", "crates/infra",
 ]
 
 [dependencies]
 api = { path = "crates/api" }
 app = { path = "crates/app" }
 domain = { path = "crates/domain" }
+infra = {path = "crates/infra"}
 
 anyhow = "1.0.102"
 axum = "0.8.8"
