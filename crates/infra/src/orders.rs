@@ -58,7 +58,7 @@ impl PostgresOrderRepository {
         Self { pool }
     }
 
-    pub async fn insert_order(&self, order: &Order) -> anyhow::Result<Order> {
+    pub async fn insert(&self, order: &Order) -> anyhow::Result<Order> {
         let row: OrderRow = sqlx::query_as(
             r#"
             INSERT INTO orders (
