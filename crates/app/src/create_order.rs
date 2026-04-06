@@ -1,7 +1,8 @@
 use async_trait::async_trait;
-use domain::{AuditLog, Order};
+use domain::{AuditLog, Order, OrderStatus};
 use thiserror::Error;
 
+#[derive(Debug, Clone)]
 pub struct CreateOrderCommand {
     pub customer_reference: String,
     pub partner_name: String,
@@ -9,33 +10,39 @@ pub struct CreateOrderCommand {
     pub currency: String,
 }
 
+#[derive(Debug, Error)]
 pub enum CreateOrderValidationError {
-    EmptyCustomerName,
+    #[error("customer reference must not be empty")]
+    EmptyCustomerReference,
+
+    #[error("partner name must not be empty")]
     EmptyPartnerName,
-    AmountOfCentsLeZero,
-    BadCurrencyFormat,
+
+    #[error("amount_cents must be greater than zero")]
+    AmountCentsMustBePositive,
+
+    #[error("currency must be exactly 3 uppercase ASCII letters")]
+    InvalidCurrencyFormat,
 }
 
 impl CreateOrderCommand {
     pub fn validate(&self) -> Result<(), CreateOrderValidationError> {
-        if self.customer_reference.is_empty() {
-            return Err(CreateOrderValidationError::EmptyCustomerName);
+        if self.customer_reference.trim().is_empty() {
+            return Err(CreateOrderValidationError::EmptyCustomerReference);
         }
 
-        if self.partner_name.is_empty() {
+        if self.partner_name.trim().is_empty() {
             return Err(CreateOrderValidationError::EmptyPartnerName);
         }
 
         if self.amount_cents <= 0 {
-            return Err(CreateOrderValidationError::AmountOfCentsLeZero);
+            return Err(CreateOrderValidationError::AmountCentsMustBePositive);
         }
 
-        if !self.currency.is_ascii()
-            || self.currency.len() != 3
-            || self.currency.to_uppercase() != self.currency
-        {
-            return Err(CreateOrderValidationError::BadCurrencyFormat);
+        if self.currency.len() != 3 || !self.currency.chars().all(|c| c.is_ascii_uppercase()) {
+            return Err(CreateOrderValidationError::InvalidCurrencyFormat);
         }
+
         Ok(())
     }
 }
@@ -55,9 +62,66 @@ pub trait CreateOrderStore: Send + Sync {
     ) -> Result<Order, CreateOrderStoreError>;
 }
 
+#[derive(Debug, Error)]
+pub enum CreateOrderServiceError {
+    #[error(transparent)]
+    Validation(#[from] CreateOrderValidationError),
+
+    #[error(transparent)]
+    Store(#[from] CreateOrderStoreError),
+}
+
 pub struct CreateOrderService<S>
 where
     S: CreateOrderStore,
 {
     order_store: S,
+}
+
+impl<S> CreateOrderService<S>
+where
+    S: CreateOrderStore,
+{
+    pub fn new(order_store: S) -> Self {
+        Self { order_store }
+    }
+
+    pub async fn execute(&self, cmd: CreateOrderCommand) -> Result<Order, CreateOrderServiceError> {
+        cmd.validate()?;
+
+        let now = chrono::Utc::now();
+        let order_id = uuid::Uuid::new_v4();
+
+        let order = Order {
+            id: order_id,
+            customer_reference: cmd.customer_reference,
+            partner_name: cmd.partner_name,
+            external_reference: None,
+            status: OrderStatus::Draft,
+            amount_cents: cmd.amount_cents,
+            currency: cmd.currency,
+            failure_reason: None,
+            created_at: now,
+            updated_at: now,
+            submitted_at: None,
+            completed_at: None,
+            cancelled_at: None,
+        };
+
+        let audit_log = AuditLog {
+            id: uuid::Uuid::new_v4(),
+            order_id,
+            event_type: "order_created".to_string(),
+            message: "Order created".to_string(),
+            metadata: None,
+            created_at: now,
+        };
+
+        let created_order = self
+            .order_store
+            .create_order_with_audit_log(&order, &audit_log)
+            .await?;
+
+        Ok(created_order)
+    }
 }
