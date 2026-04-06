@@ -1,5 +1,6 @@
 mod create_order;
 
 pub use create_order::{
-    CreateOrderCommand, CreateOrderStore, CreateOrderStoreError, CreateOrderValidationError,
+    CreateOrderCommand, CreateOrderService, CreateOrderServiceError, CreateOrderStore,
+    CreateOrderStoreError, CreateOrderValidationError,
 };
