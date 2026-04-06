@@ -1,3 +1,7 @@
+use async_trait::async_trait;
+use domain::{AuditLog, Order};
+use thiserror::Error;
+
 pub struct CreateOrderCommand {
     pub customer_reference: String,
     pub partner_name: String,
@@ -34,4 +38,26 @@ impl CreateOrderCommand {
         }
         Ok(())
     }
+}
+
+#[derive(Debug, Error)]
+pub enum CreateOrderStoreError {
+    #[error("persistence error: {0}")]
+    Persistence(String),
+}
+
+#[async_trait]
+pub trait CreateOrderStore: Send + Sync {
+    async fn create_order_with_audit_log(
+        &self,
+        order: &Order,
+        audit_log: &AuditLog,
+    ) -> Result<Order, CreateOrderStoreError>;
+}
+
+pub struct CreateOrderService<S>
+where
+    S: CreateOrderStore,
+{
+    order_store: S,
 }
