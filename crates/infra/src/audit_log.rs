@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use domain::AuditLog;
-use sqlx::PgPool;
+use sqlx::{PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
 #[derive(sqlx::FromRow)]
@@ -57,6 +57,37 @@ impl PostgresAuditLogRepository {
         .bind(audit_log.metadata.as_ref())
         .bind(audit_log.created_at)
         .fetch_one(&self.pool)
+        .await?;
+
+        Ok(row.into())
+    }
+
+    pub async fn insert_tx(
+        &self,
+        tx: &mut Transaction<'_, Postgres>,
+        audit_log: &AuditLog,
+    ) -> anyhow::Result<AuditLog> {
+        let row: AuditLogRow = sqlx::query_as(
+            r#"
+        INSERT INTO audit_logs (
+            id,
+            order_id,
+            event_type,
+            message,
+            metadata,
+            created_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING *
+        "#,
+        )
+        .bind(audit_log.id)
+        .bind(audit_log.order_id)
+        .bind(&audit_log.event_type)
+        .bind(&audit_log.message)
+        .bind(audit_log.metadata.as_ref())
+        .bind(audit_log.created_at)
+        .fetch_one(&mut **tx)
         .await?;
 
         Ok(row.into())
