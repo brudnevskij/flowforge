@@ -90,3 +90,49 @@ async fn create_order() {
     assert_eq!(audit_log_row.event_type, "order_created");
     assert_eq!(audit_log_row.message, "Order created");
 }
+
+#[tokio::test]
+async fn create_order_validation_fail() {
+    let db = TestDatabase::new().await;
+    let app = init_app_state(db.pool.clone());
+
+    let dtos = vec![
+        CreateOrderRequest {
+            customer_reference: "cust-123".to_string(),
+            partner_name: "dhl".to_string(),
+            amount_cents: 0,
+            currency: "EUR".to_string(),
+        },
+        CreateOrderRequest {
+            customer_reference: "cust-123".to_string(),
+            partner_name: "dhl".to_string(),
+            amount_cents: 100,
+            currency: "eUR".to_string(),
+        },
+        CreateOrderRequest {
+            customer_reference: "".to_string(),
+            partner_name: "dhl".to_string(),
+            amount_cents: 1000,
+            currency: "EUR".to_string(),
+        },
+        CreateOrderRequest {
+            customer_reference: "cust-123".to_string(),
+            partner_name: "".to_string(),
+            amount_cents: 1000,
+            currency: "EUR".to_string(),
+        },
+    ];
+
+    for dto in dtos {
+        let request = Request::builder()
+            .method("POST")
+            .uri("/orders")
+            .header("content-type", "application/json")
+            .body(Body::from(serde_json::to_vec(&dto).unwrap()))
+            .unwrap();
+
+        let response = app.clone().oneshot(request).await.unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    }
+}
