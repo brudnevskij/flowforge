@@ -71,6 +71,11 @@ pub enum CreateOrderServiceError {
     Store(#[from] CreateOrderStoreError),
 }
 
+#[async_trait::async_trait]
+pub trait CreateOrderUseCase: Send + Sync {
+    async fn execute(&self, cmd: CreateOrderCommand) -> Result<Order, CreateOrderServiceError>;
+}
+
 pub struct CreateOrderService<S>
 where
     S: CreateOrderStore,
@@ -85,8 +90,14 @@ where
     pub fn new(order_store: S) -> Self {
         Self { order_store }
     }
+}
 
-    pub async fn execute(&self, cmd: CreateOrderCommand) -> Result<Order, CreateOrderServiceError> {
+#[async_trait::async_trait]
+impl<S> CreateOrderUseCase for CreateOrderService<S>
+where
+    S: CreateOrderStore,
+{
+    async fn execute(&self, cmd: CreateOrderCommand) -> Result<Order, CreateOrderServiceError> {
         cmd.validate()?;
 
         let now = chrono::Utc::now();
