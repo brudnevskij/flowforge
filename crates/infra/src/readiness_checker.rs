@@ -1,5 +1,10 @@
 use sqlx::PgPool;
 
+#[async_trait::async_trait]
+pub trait ReadinessCheckUseCase: Send + Sync {
+    async fn is_ready(&self) -> bool;
+}
+
 pub struct ReadinessChecker {
     pool: PgPool,
 }
@@ -8,8 +13,11 @@ impl ReadinessChecker {
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
+}
 
-    pub async fn is_ready(&self) -> bool {
+#[async_trait::async_trait]
+impl ReadinessCheckUseCase for ReadinessChecker {
+    async fn is_ready(&self) -> bool {
         sqlx::query_scalar::<_, i32>("SELECT 1")
             .fetch_one(&self.pool)
             .await
