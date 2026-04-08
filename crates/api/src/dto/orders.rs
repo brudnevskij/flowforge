@@ -10,8 +10,8 @@ pub struct CreateOrderRequest {
     pub currency: String,
 }
 
-#[derive(Debug, Serialize)]
-pub struct OrderResponse {
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CreateOrderResponse {
     pub id: Uuid,
     pub customer_reference: String,
     pub partner_name: String,
@@ -27,7 +27,7 @@ pub struct OrderResponse {
     pub cancelled_at: Option<DateTime<Utc>>,
 }
 
-impl From<domain::Order> for OrderResponse {
+impl From<domain::Order> for CreateOrderResponse {
     fn from(order: domain::Order) -> Self {
         Self {
             id: order.id,

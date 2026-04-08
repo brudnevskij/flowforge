@@ -1,15 +1,15 @@
-use app::{CreateOrderCommand, CreateOrderServiceError, CreateOrderValidationError};
+use app::{CreateOrderCommand, CreateOrderServiceError};
 use axum::{Json, extract::State, http::StatusCode};
 
 use crate::{
-    dto::{CreateOrderRequest, ErrorResponse, OrderResponse},
+    dto::{CreateOrderRequest, CreateOrderResponse, ErrorResponse},
     state::ApiState,
 };
 
 pub async fn create_order_handler(
     State(state): State<ApiState>,
     Json(request): Json<CreateOrderRequest>,
-) -> Result<(StatusCode, Json<OrderResponse>), (StatusCode, Json<ErrorResponse>)> {
+) -> Result<(StatusCode, Json<CreateOrderResponse>), (StatusCode, Json<ErrorResponse>)> {
     let command = CreateOrderCommand {
         customer_reference: request.customer_reference,
         partner_name: request.partner_name,
@@ -18,7 +18,7 @@ pub async fn create_order_handler(
     };
 
     match state.create_order_service.execute(command).await {
-        Ok(order) => Ok((StatusCode::CREATED, Json(OrderResponse::from(order)))),
+        Ok(order) => Ok((StatusCode::CREATED, Json(CreateOrderResponse::from(order)))),
 
         Err(CreateOrderServiceError::Validation(err)) => Err((
             StatusCode::BAD_REQUEST,
