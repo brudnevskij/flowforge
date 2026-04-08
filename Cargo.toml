@@ -14,9 +14,15 @@ app = { path = "crates/app" }
 domain = { path = "crates/domain" }
 infra = {path = "crates/infra"}
 
+tower = "0.5"
+http-body-util = "0.1"
 anyhow = "1.0.102"
 axum = "0.8.8"
 chrono = "0.4.44"
 serde = "1.0.228"
+serde_json = "1"
 tokio = { version = "1", features = ["full"] }
-
+testcontainers = "0.17"
+testcontainers-modules = { version = "0.5", features = ["postgres"] }
+reqwest = { version = "0.12", features = ["json"] }
+sqlx = { version = "0.8", features = ["postgres", "runtime-tokio-rustls", "uuid", "chrono", "json"] }
