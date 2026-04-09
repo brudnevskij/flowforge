@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use domain::{AuditLog, Order, OrderStatus};
 use thiserror::Error;
+use tracing::{info, warn};
 
 #[derive(Debug, Clone)]
 pub struct CreateOrderCommand {
@@ -98,7 +99,18 @@ where
     S: CreateOrderStore,
 {
     async fn execute(&self, cmd: CreateOrderCommand) -> Result<Order, CreateOrderServiceError> {
-        cmd.validate()?;
+        info!(customer_reference = %cmd.customer_reference, partner_name = %cmd.partner_name, amount_cents = %cmd.amount_cents, currency = %cmd.currency, "create order attempt");
+
+        if let Err(err) = cmd.validate() {
+            warn!(
+            customer_reference = %cmd.customer_reference,
+            partner_name = %cmd.partner_name,
+            amount_cents = %cmd.amount_cents,
+            currency = %cmd.currency,
+            "create order validation error"
+                );
+            return Err(err.into());
+        };
 
         let now = chrono::Utc::now();
         let order_id = uuid::Uuid::new_v4();
@@ -131,7 +143,23 @@ where
         let created_order = self
             .order_store
             .create_order_with_audit_log(&order, &audit_log)
-            .await?;
+            .await
+            .map_err(|err| {
+                warn!(
+                    order_id = %order_id,
+                    error = %err,
+                    "create order persistence failure"
+                );
+                err
+            })?;
+
+        info!(
+            order_id = %created_order.id,
+            customer_reference = %created_order.customer_reference,
+            partner_name = %created_order.partner_name,
+            status = ?created_order.status,
+            "create order succeeded"
+        );
 
         Ok(created_order)
     }
